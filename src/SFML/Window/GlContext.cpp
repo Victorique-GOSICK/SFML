@@ -38,6 +38,7 @@
 #include <set>
 #include <cstdlib>
 #include <cstring>
+#include <cctype>
 #include <cassert>
 
 #if !defined(SFML_OPENGL_ES)
@@ -582,12 +583,33 @@ void GlContext::initialize(const ContextSettings& requestedSettings)
     else
     {
         // Try the old way
-        const GLubyte* version = glGetString(GL_VERSION);
-        if (version)
+        const char* version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+        if (version && (std::strlen(version) >= 3))
         {
-            // The beginning of the returned string is "major.minor" (this is standard)
-            m_settings.majorVersion = version[0] - '0';
-            m_settings.minorVersion = version[2] - '0';
+            if (!std::strncmp(version, "OpenGL ES-CL", 12))
+            {
+                // OpenGL ES Common Lite profile: The beginning of the returned string is "OpenGL ES-CL major.minor"
+                m_settings.majorVersion = version[13] - '0';
+                m_settings.minorVersion = version[15] - '0';
+            }
+            else if (!std::strncmp(version, "OpenGL ES-CM", 12))
+            {
+                // OpenGL ES Common profile: The beginning of the returned string is "OpenGL ES-CM major.minor"
+                m_settings.majorVersion = version[13] - '0';
+                m_settings.minorVersion = version[15] - '0';
+            }
+            else if (!std::strncmp(version, "OpenGL ES", 9))
+            {
+                // OpenGL ES Full profile: The beginning of the returned string is "OpenGL ES major.minor"
+                m_settings.majorVersion = version[10] - '0';
+                m_settings.minorVersion = version[12] - '0';
+            }
+            else if (std::isdigit(version[0]) && std::isdigit(version[2]))
+            {
+                // Desktop OpenGL: The beginning of the returned string is "major.minor"
+                m_settings.majorVersion = version[0] - '0';
+                m_settings.minorVersion = version[2] - '0';
+            }
         }
         else
         {
